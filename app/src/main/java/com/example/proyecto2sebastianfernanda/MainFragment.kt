@@ -36,6 +36,7 @@ class MainFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         val rootView = inflater.inflate(R.layout.fragment_main, container, false)
+
         etNombre = rootView.findViewById(R.id.etNombre)
         iVPersonaje = rootView.findViewById(R.id.iVPersonaje)
         btnJugar = rootView.findViewById(R.id.btnJugar)
@@ -80,13 +81,18 @@ class MainFragment : Fragment() {
             mp.stop()
             mp.release()
 
-            val intent = Intent(requireContext(), NivelBaseFragment::class.java)
-            intent.putExtra("jugador", nombre)
-            startActivity(intent)
-            requireActivity().finish()
+            val fragment = NivelBaseFragment()
+            val bundle = Bundle()
+            bundle.putString("jugador", nombre)
+            fragment.arguments = bundle
+
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.fragment_container, fragment)
+                .commit()
+
+            etNombre.setText("")
         } else {
             Toast.makeText(requireContext(), "Debe escribir su nombre!", Toast.LENGTH_SHORT).show()
-
             etNombre.requestFocus()
             val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             imm.showSoftInput(etNombre, InputMethodManager.SHOW_IMPLICIT)

@@ -1,14 +1,7 @@
 package com.example.proyecto2sebastianfernanda
 
 
-import android.widget.Button
-import android.widget.EditText
-import android.widget.ImageView
-import android.widget.TextView
 import android.content.ContentValues
-import android.content.Intent
-import android.database.Cursor
-import android.database.sqlite.SQLiteDatabase
 import android.media.MediaPlayer
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -16,7 +9,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.fragment.app.Fragment
-import com.example.proyecto2sebastianfernanda.MainFragment
 
 class NivelBaseFragment : Fragment() {
     private lateinit var tv_nombre: TextView
@@ -30,9 +22,16 @@ class NivelBaseFragment : Fragment() {
     private lateinit var mpGreat: MediaPlayer
     private lateinit var mpBad: MediaPlayer
     private lateinit var btnComprobar: Button
+    private var numeroAleatorioUno = -1
+    private var numeroAleatorioDos = -1
+    private lateinit var nombreJugador: String
+    private var resultado = 0
     private var score = 0
     private var vidas = 3
-    private var nivel = 1
+    private var nivel = 8
+    private var scoreLimite = 9
+    private var tituloNivel="Sumas básicas"
+    private var mensajeNivel = "Nivel $nivel - $tituloNivel"
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -40,7 +39,7 @@ class NivelBaseFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_base_nivel, container, false)
-
+        Toast.makeText(requireContext(), mensajeNivel, Toast.LENGTH_SHORT).show()
         tv_nombre = view.findViewById(R.id.tv_nombre)
         tv_score = view.findViewById(R.id.tv_score)
         iv_Vidas = view.findViewById(R.id.iv_vidas)
@@ -50,8 +49,8 @@ class NivelBaseFragment : Fragment() {
         et_Respuesta = view.findViewById(R.id.et_respuesta)
         btnComprobar = view.findViewById(R.id.btnComprobar)
 
-        val nombre_jugador = arguments?.getString("jugador")
-        tv_nombre.text = "Jugador: $nombre_jugador"
+        nombreJugador = arguments?.getString("jugador")!!
+        tv_nombre.text = "Jugador: $nombreJugador"
 
         val string_score = arguments?.getString("score")
         score = string_score?.toInt() ?: 0
@@ -76,25 +75,45 @@ class NivelBaseFragment : Fragment() {
     }
 
     private fun numeroAleatorio() {
-        when (nivel) {
-            1 -> {
+        if (score <= scoreLimite) {
+            when(nivel){
+                1-> nivel1()
+                2-> suma()
+                3-> resta()
+                4-> nivel4()
+                5-> nivel5()
+                6-> nivel6()
+                7-> nivel7()
+                8,9-> nivel8()
+            }
 
-            }
-            2 -> {
 
+        } else {
+            if(nivel<=8) {
+                scoreLimite += 10
+                nivel++
             }
-            3 -> {
-                // Lógica para el nivel 3
-                // ...
+            else {
+                scoreLimite = Int.MAX_VALUE
             }
-            4 -> {
-
-                // ...
-            }
-            else -> {
-
-            }
+            actualizarMensajeMetodo()
+            Toast.makeText(requireContext(), mensajeNivel, Toast.LENGTH_SHORT).show()
+            numeroAleatorio()
         }
+    }
+
+    private fun actualizarMensajeMetodo() {
+        when(nivel) {
+            2 -> tituloNivel = "Sumas intermedias"
+            3 -> tituloNivel = "Restas básicas"
+            4 -> tituloNivel = "Sumas y restas"
+            5 -> tituloNivel = "Multiplicación"
+            6 -> tituloNivel = "División"
+            7 -> tituloNivel = "Multiplicacion y division"
+            8 -> tituloNivel = "Todas las operaciones"
+            9 -> tituloNivel = "Infinito"
+        }
+        mensajeNivel = "Nivel $nivel - $tituloNivel"
     }
 
     private fun getDrawableId(numero: Int): Int {
@@ -118,7 +137,7 @@ class NivelBaseFragment : Fragment() {
         val db = admin.writableDatabase
 
         val values = ContentValues()
-        values.put("nombre", "Jugador1")
+        values.put("nombre", nombreJugador)
         values.put("score", score)
 
         db.insert("puntaje", null, values)
@@ -126,44 +145,17 @@ class NivelBaseFragment : Fragment() {
     }
 
     private fun comparar() {
+        var manzanas = "manzanas"
+        var quedan = "quedan"
         val respuesta = et_Respuesta.text.toString()
         if (respuesta.isNotEmpty()) {
             val respuestaJugador = respuesta.toInt()
 
-            var resultado = 0
-
-            when (nivel) {
-                1 -> {
-                    // Lógica para el nivel 1
-                    // resultado = // ...
-                }
-                2 -> {
-                    // Lógica para el nivel 2
-                    // resultado = // ...
-                }
-                3 -> {
-                    // Lógica para el nivel 3
-                    // resultado = // ...
-                }
-                4 -> {
-                    // Lógica para el nivel 4
-                    // resultado = // ...
-                }
-                else -> {
-                    // Lógica para niveles adicionales
-                }
-            }
-
             if (respuestaJugador == resultado) {
                 mpGreat.start()
-                score++
+                score ++
                 tv_score.text = "Score: $score"
-
-                if (score == 10) { // Si el score alcanza 10
-                    nivel++ // Incrementar el nivel
-                    score = 0 // Reiniciar el score a 0
-                    Toast.makeText(requireContext(), "¡Pasaste al siguiente nivel!", Toast.LENGTH_SHORT).show()
-                }
+                Toast.makeText(requireContext(), "Correcto!", Toast.LENGTH_SHORT).show()
             } else {
                 mpBad.start()
                 vidas--
@@ -171,11 +163,21 @@ class NivelBaseFragment : Fragment() {
 
                 if (vidas == 0) { // Si se quedan sin vidas
                     Toast.makeText(requireContext(), "¡Perdiste todas tus vidas!", Toast.LENGTH_SHORT).show()
-                    mp.stop()
-                    mp.release()
-                    val intent = Intent(requireContext(), MainFragment::class.java)
-                    startActivity(intent)
-                    requireActivity().finish()
+
+                    val fragment = MainFragment()
+                    val bundle = Bundle()
+                    fragment.arguments = bundle
+
+                    parentFragmentManager.beginTransaction()
+                        .replace(R.id.fragment_container, fragment)
+                        .commit()
+                }
+                else {
+                    if(vidas == 1) {
+                        manzanas = "manzana"
+                        quedan = "queda"
+                    }
+                    Toast.makeText(requireContext(), "Te equivocaste! Te $quedan $vidas $manzanas!", Toast.LENGTH_SHORT).show()
                 }
                 baseDeDatos()
             }
@@ -189,9 +191,15 @@ class NivelBaseFragment : Fragment() {
 
     private fun updateVidasUI() {
         when (vidas) {
-            3 -> iv_Vidas.setImageResource(R.drawable.tresvidas)
-            2 -> iv_Vidas.setImageResource(R.drawable.dosvidas)
-            1 -> iv_Vidas.setImageResource(R.drawable.unavida)
+            3 -> {
+                iv_Vidas.setImageResource(R.drawable.tresvidas)
+            }
+            2 -> {
+                iv_Vidas.setImageResource(R.drawable.dosvidas)
+            }
+            1 -> {
+                iv_Vidas.setImageResource(R.drawable.unavida)
+            }
         }
     }
 
@@ -201,5 +209,120 @@ class NivelBaseFragment : Fragment() {
         mp.release()
         mpGreat.release()
         mpBad.release()
+    }
+
+    private fun nivel1(){
+        numeroAleatorioUno = (Math.random() * 10).toInt()
+        numeroAleatorioDos = (Math.random() * 10).toInt()
+
+        resultado = numeroAleatorioUno + numeroAleatorioDos
+        if (resultado > 10) {
+            suma()
+        }
+        else {
+            iv_Auno.setImageResource(getDrawableId(numeroAleatorioUno))
+            iv_Ados.setImageResource(getDrawableId(numeroAleatorioDos))
+        }
+    }
+
+    private fun suma(){
+        numeroAleatorioUno = (Math.random() * 10).toInt()
+        numeroAleatorioDos = (Math.random() * 10).toInt()
+        resultado = numeroAleatorioUno + numeroAleatorioDos
+        iv_Auno.setImageResource(getDrawableId(numeroAleatorioUno))
+        iv_Ados.setImageResource(getDrawableId(numeroAleatorioDos))
+        iv_Signo.setImageResource(R.drawable.adicion)
+    }
+
+    private fun resta(){
+        numeroAleatorioUno = (Math.random() * 10).toInt()
+        numeroAleatorioDos = (Math.random() * 10).toInt()
+        resultado = numeroAleatorioUno - numeroAleatorioDos
+        if (resultado < 0) {
+           resta()
+        }
+        else {
+            iv_Auno.setImageResource(getDrawableId(numeroAleatorioUno))
+            iv_Ados.setImageResource(getDrawableId(numeroAleatorioDos))
+            iv_Signo.setImageResource(R.drawable.resta)
+        }
+    }
+
+    private fun nivel4(){
+        numeroAleatorioUno = (Math.random() * 10).toInt()
+        numeroAleatorioDos = (Math.random() * 10).toInt()
+        if (numeroAleatorioUno > 0 && numeroAleatorioDos <= 4) {
+            resultado = numeroAleatorioUno + numeroAleatorioDos;
+            iv_Signo.setImageResource(R.drawable.adicion); // Establece la imagen de suma
+        } else {
+            resultado = (numeroAleatorioUno - numeroAleatorioDos);
+            iv_Signo.setImageResource(R.drawable.resta);
+            if(resultado<0)
+                nivel4()
+        }
+        iv_Auno.setImageResource(getDrawableId(numeroAleatorioUno))
+        iv_Ados.setImageResource(getDrawableId(numeroAleatorioDos))
+    }
+
+    private fun nivel5(){
+        numeroAleatorioUno = (Math.random() * 10).toInt()
+        numeroAleatorioDos = (Math.random() * 10).toInt()
+        resultado = numeroAleatorioUno * numeroAleatorioDos
+        iv_Auno.setImageResource(getDrawableId(numeroAleatorioUno))
+        iv_Ados.setImageResource(getDrawableId(numeroAleatorioDos))
+        iv_Signo.setImageResource(R.drawable.multiplicacion)
+    }
+
+    private fun nivel6(){
+        numeroAleatorioUno = (Math.random() * 10).toInt()
+        numeroAleatorioDos = (Math.random() * 10).toInt()
+        if(numeroAleatorioDos == 0)
+            nivel6()
+        else if(numeroAleatorioUno % numeroAleatorioDos != 0) {
+            nivel6()
+        }
+        else{
+            resultado = numeroAleatorioUno / numeroAleatorioDos
+            iv_Auno.setImageResource(getDrawableId(numeroAleatorioUno))
+            iv_Ados.setImageResource(getDrawableId(numeroAleatorioDos))
+            iv_Signo.setImageResource(R.drawable.division)
+        }
+    }
+
+    private fun nivel7(){
+        numeroAleatorioUno = (Math.random() * 10).toInt()
+        numeroAleatorioDos = (Math.random() * 10).toInt()
+        if (numeroAleatorioUno > 0 && numeroAleatorioDos <= 4) {
+            resultado = numeroAleatorioUno * numeroAleatorioDos;
+            iv_Signo.setImageResource(R.drawable.multiplicacion); // Establece la imagen de suma
+        } else if(numeroAleatorioDos == 0){
+            nivel7()
+        }
+        else if(numeroAleatorioUno % numeroAleatorioDos != 0) {
+            nivel7()
+        }
+        else{
+            resultado = numeroAleatorioUno / numeroAleatorioDos
+            iv_Auno.setImageResource(getDrawableId(numeroAleatorioUno))
+            iv_Ados.setImageResource(getDrawableId(numeroAleatorioDos))
+            iv_Signo.setImageResource(R.drawable.division)
+        }
+        iv_Auno.setImageResource(getDrawableId(numeroAleatorioUno))
+        iv_Ados.setImageResource(getDrawableId(numeroAleatorioDos))
+    }
+
+    private fun nivel8(){
+        when(((Math.random() * 4) + 1).toInt()){
+            1->suma()
+            2->resta()
+            3->nivel5()
+            4->nivel6()
+        }
+    }
+    private fun restaVerificada(){
+        resultado = numeroAleatorioUno - numeroAleatorioDos
+        iv_Auno.setImageResource(getDrawableId(numeroAleatorioUno))
+        iv_Ados.setImageResource(getDrawableId(numeroAleatorioDos))
+        iv_Signo.setImageResource(R.drawable.resta)
     }
 }
