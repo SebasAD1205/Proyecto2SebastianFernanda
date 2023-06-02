@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "591451895469",
+    "project_id": "moviles-5ccce",
+    "storage_bucket": "moviles-5ccce.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:591451895469:android:5e7dc50d60ce057e8a7824",
+        "android_client_info": {
+          "package_name": "com.example.proyecto2sebastianfernanda"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "591451895469-ac2e87dbq4heg6njli870cno8l7cp45r.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyATK4LDEj8FZBkGW4YuoHB494yr73izxGo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "591451895469-ac2e87dbq4heg6njli870cno8l7cp45r.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

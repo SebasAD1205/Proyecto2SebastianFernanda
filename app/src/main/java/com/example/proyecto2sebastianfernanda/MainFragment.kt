@@ -1,26 +1,23 @@
 package com.example.proyecto2sebastianfernanda
 
+import android.annotation.SuppressLint
 import android.content.Context
-import android.content.Intent
 import android.media.MediaPlayer
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
+import androidx.fragment.app.Fragment
+import com.google.firebase.firestore.FirebaseFirestore
+
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
 
-/**
- * A simple [Fragment] subclass.
- * Use the [MainFragment.newInstance] factory method to
- * create an instance of this fragment.
- */
+
+
 class MainFragment : Fragment() {
     private lateinit var etNombre: EditText
     private lateinit var iVPersonaje: ImageView
@@ -30,6 +27,7 @@ class MainFragment : Fragment() {
     private lateinit var mp: MediaPlayer
     private var numAleatorio: Int = (Math.random() * 10).toInt()
 
+    @SuppressLint("SetTextI18n", "DiscouragedApi")
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -44,23 +42,15 @@ class MainFragment : Fragment() {
 
         btnJugar.setOnClickListener { jugar() }
 
-        val admin = AdminSQLiteOpenHelper(requireContext(), "BD", null, 1)
-        val db = admin.writableDatabase
+        val bd = FirebaseFirestore.getInstance()
 
-        val consulta = db.rawQuery(
-            "select * from puntaje where score = (select max(score) from puntaje)", null
-        )
-
-        if (consulta.moveToFirst()) {
-            val temp_nombre = consulta.getString(0)
-            val temp_score = consulta.getString(1)
-
-            tVBestScore.text = "Record: $temp_score de $temp_nombre"
-        }
-
-        mp = MediaPlayer.create(requireContext(), R.raw.alphabet_song)
-        mp.start()
-        mp.isLooping = true
+        bd.collection("Jugadores")
+            .document("3pIGRRf1se02EB8y6AvJ")
+            .get().addOnSuccessListener {
+                val tempNombre = it.get("nombre")
+                val tempScore = it.get("score")
+                tVBestScore.text = "Record: $tempScore de $tempNombre"
+            }
 
         val id = when (numAleatorio) {
             0, 10 -> resources.getIdentifier("mango", "drawable", requireContext().packageName)
@@ -72,6 +62,13 @@ class MainFragment : Fragment() {
         iVPersonaje.setImageResource(id)
 
         return rootView
+    }
+
+    override fun onStart() {
+        super.onStart()
+        mp = MediaPlayer.create(requireContext(), R.raw.alphabet_song)
+        mp.isLooping = true
+        mp.start()
     }
 
     private fun jugar() {
@@ -86,6 +83,7 @@ class MainFragment : Fragment() {
             bundle.putString("jugador", nombre)
             fragment.arguments = bundle
 
+
             parentFragmentManager.beginTransaction()
                 .replace(R.id.fragment_container, fragment)
                 .commit()
@@ -99,7 +97,4 @@ class MainFragment : Fragment() {
         }
     }
 
-    fun onBackPressed() {
-
-    }
 }
