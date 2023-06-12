@@ -71,13 +71,15 @@ class MainFragment : Fragment() {
         mp.start()
     }
 
+    override fun onStop() {
+        super.onStop()
+        mp.stop()
+        mp.release()
+    }
     private fun jugar() {
         val nombre = etNombre.text.toString()
 
         if (nombre.isNotEmpty()) {
-            mp.stop()
-            mp.release()
-
             val fragment = NivelBaseFragment()
             val bundle = Bundle()
             bundle.putString("jugador", nombre)
