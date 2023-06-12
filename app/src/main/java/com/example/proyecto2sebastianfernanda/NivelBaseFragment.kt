@@ -1,6 +1,7 @@
 package com.example.proyecto2sebastianfernanda
 
 
+import android.content.res.Configuration
 import android.media.MediaPlayer
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -10,6 +11,7 @@ import android.widget.*
 import androidx.fragment.app.Fragment
 import com.google.firebase.firestore.FirebaseFirestore
 
+@Suppress("DEPRECATION")
 class NivelBaseFragment : Fragment() {
     private lateinit var tvNombre: TextView
     private lateinit var tvScore: TextView
@@ -18,10 +20,13 @@ class NivelBaseFragment : Fragment() {
     private lateinit var ivVidas: ImageView
     private lateinit var ivSigno: ImageView
     private lateinit var etRespuesta: EditText
+
     private lateinit var mp: MediaPlayer
     private lateinit var mpGreat: MediaPlayer
     private lateinit var mpBad: MediaPlayer
+
     private lateinit var btnComprobar: Button
+
     private var numeroAleatorioUno = -1
     private var numeroAleatorioDos = -1
     private lateinit var nombreJugador: String
@@ -30,54 +35,120 @@ class NivelBaseFragment : Fragment() {
     private var vidas = 3
     private var nivel = 1
     private var scoreLimite = 9
+
     private var tituloNivel="Sumas básicas"
+    private var signo = 1
     private var mensajeNivel = "Nivel $nivel - $tituloNivel"
     private lateinit var stringScoreAux: String
+
+    private var posicionAudio = 0
     private var toastMessage:Toast? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        retainInstance = true
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        val view = inflater.inflate(R.layout.fragment_base_nivel, container, false)
-        cancelarToast()
-        toastMessage = Toast.makeText(requireContext(), mensajeNivel, Toast.LENGTH_SHORT)
-        toastMessage?.show()
 
-        tvNombre = view.findViewById(R.id.tv_nombre)
-        tvScore = view.findViewById(R.id.tv_score)
-        ivVidas = view.findViewById(R.id.iv_vidas)
-        ivAuno = view.findViewById(R.id.iv_Auno)
-        ivAdos = view.findViewById(R.id.iv_Ados)
-        ivSigno = view.findViewById(R.id.iv_Signo)
-        etRespuesta = view.findViewById(R.id.et_respuesta)
-        btnComprobar = view.findViewById(R.id.btnComprobar)
+        val currentOrientation = resources.configuration.orientation
+        val rootView = if (currentOrientation == Configuration.ORIENTATION_LANDSCAPE) {
+            inflater.inflate(R.layout.fragment_base_nivel_land, container, false)
+        } else {
+            inflater.inflate(R.layout.fragment_base_nivel, container, false)
+        }
 
-        nombreJugador = arguments?.getString("jugador")!!
-        val stringJugador ="Jugador: $nombreJugador"
-        tvNombre.text =  stringJugador
+        tvNombre = rootView.findViewById(R.id.tv_nombre)
+        tvScore = rootView.findViewById(R.id.tv_score)
+        ivVidas = rootView.findViewById(R.id.iv_vidas)
+        ivAuno = rootView.findViewById(R.id.iv_Auno)
+        ivAdos = rootView.findViewById(R.id.iv_Ados)
+        ivSigno = rootView.findViewById(R.id.iv_Signo)
+        etRespuesta = rootView.findViewById(R.id.et_respuesta)
+        btnComprobar = rootView.findViewById(R.id.btnComprobar)
 
-        val stringScore = arguments?.getString("score")
-        score = stringScore?.toInt() ?: 0
+        if(savedInstanceState == null) {
+            cancelarToast()
+            toastMessage = Toast.makeText(requireContext(), mensajeNivel, Toast.LENGTH_SHORT)
+            toastMessage?.show()
+
+            nombreJugador = arguments?.getString("jugador")!!
+
+            val stringScore = arguments?.getString("score")
+            score = stringScore?.toInt() ?: 0
+
+            val stringVidas = arguments?.getString("vidas")
+            vidas = stringVidas?.toInt() ?: 3
+
+            numeroAleatorio()
+        }
+        else{
+            nombreJugador = savedInstanceState.getString("nombre")!!
+            score = savedInstanceState.getInt("score")
+            vidas = savedInstanceState.getInt("vidas")
+            nivel = savedInstanceState.getInt("nivel")
+            numeroAleatorioDos = savedInstanceState.getInt("numeroAleatorioUno")
+            numeroAleatorioDos = savedInstanceState.getInt("numeroAleatorioDos")
+            resultado = savedInstanceState.getInt("resultado")
+            ivAuno.setImageResource(getDrawableId(numeroAleatorioUno))
+            ivAdos.setImageResource(getDrawableId(numeroAleatorioDos))
+            when(signo){
+                1 -> ivSigno.setImageResource(R.drawable.adicion)
+                2 -> ivSigno.setImageResource(R.drawable.resta)
+                3 -> ivSigno.setImageResource(R.drawable.multiplicacion)
+                4 -> ivSigno.setImageResource(R.drawable.division)
+            }
+            posicionAudio = savedInstanceState.getInt("posicionAudio")
+            savedInstanceState.clear()
+        }
+
+        val stringJugador = "Jugador: $nombreJugador"
+        tvNombre.text = stringJugador
+
         stringScoreAux = "Score: $score"
-        tvScore.text = stringScore
-
-        val stringVidas = arguments?.getString("vidas")
-        vidas = stringVidas?.toInt() ?: 3
-        updateVidasUI()
-
-        mp = MediaPlayer.create(requireContext(), R.raw.alphabet_song)
-        mp.start()
-        mp.isLooping = true
+        tvScore.text = stringScoreAux
 
         mpGreat = MediaPlayer.create(requireContext(), R.raw.wonderful)
         mpBad = MediaPlayer.create(requireContext(), R.raw.bad)
 
-        numeroAleatorio()
+        updateVidasUI()
 
         btnComprobar.setOnClickListener { comparar() }
 
-        return view
+        return rootView
+    }
+
+    override fun onStart() {
+        super.onStart()
+        mp = MediaPlayer.create(requireContext(), R.raw.alphabet_song)
+        mp.seekTo(posicionAudio)
+        mp.isLooping = true
+        mp.start()
+    }
+    override fun onPause() {
+        super.onPause()
+        posicionAudio = mp.currentPosition
+        mp.stop()
+        mp.release()
+        mpGreat.release()
+        mpBad.release()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString("nombre", nombreJugador)
+        outState.putInt("score", score)
+        outState.putInt("vidas", vidas)
+        outState.putInt("nivel", nivel)
+        outState.putInt("numeroAleatorioUno", numeroAleatorioUno)
+        outState.putInt("numeroAleatorioDos", numeroAleatorioDos)
+        outState.putInt("resultado", resultado)
+        outState.putInt("signo", signo)
+        outState.putInt("posicionAudio", posicionAudio)
     }
 
     private fun numeroAleatorio() {
@@ -92,8 +163,6 @@ class NivelBaseFragment : Fragment() {
                 7-> nivel7()
                 8,9-> nivel8()
             }
-
-
         } else {
             if(nivel<=8) {
                 scoreLimite += 10
@@ -146,9 +215,17 @@ class NivelBaseFragment : Fragment() {
             "nombre" to nombreJugador,
             "score" to score
         )
-        bd.collection("Jugadores")
+        val doc = bd.collection("Jugadores")
             .document("3pIGRRf1se02EB8y6AvJ")
-            .update(data)
+
+        doc.get().addOnSuccessListener {
+            if(it !=null){
+                val record = (it.get("score") as Long).toInt()
+                if(record < score){
+                    doc.update(data)
+                }
+            }
+        }
     }
 
     private fun comparar() {
@@ -176,7 +253,7 @@ class NivelBaseFragment : Fragment() {
                     cancelarToast()
                     toastMessage = Toast.makeText(requireContext(), "¡Perdiste todas tus vidas!", Toast.LENGTH_SHORT)
                     toastMessage?.show()
-
+                    baseDeDatos()
                     val fragment = MainFragment()
                     val bundle = Bundle()
                     fragment.arguments = bundle
@@ -195,9 +272,8 @@ class NivelBaseFragment : Fragment() {
                     toastMessage = Toast.makeText(requireContext(), "Te equivocaste! Te $quedan $vidas $manzanas!", Toast.LENGTH_SHORT)
                     toastMessage?.show()
                 }
-                baseDeDatos()
-            }
 
+            }
             etRespuesta.setText("")
             numeroAleatorio()
         } else {
@@ -221,19 +297,12 @@ class NivelBaseFragment : Fragment() {
         }
     }
 
-    override fun onDestroyView() {
-        super.onDestroyView()
-        mp.stop()
-        mp.release()
-        mpGreat.release()
-        mpBad.release()
-    }
-
     private fun nivel1(){
         numeroAleatorioUno = (Math.random() * 10).toInt()
         numeroAleatorioDos = (Math.random() * 10).toInt()
 
         resultado = numeroAleatorioUno + numeroAleatorioDos
+        signo = 1
         if (resultado > 10) {
             nivel1()
         }
@@ -247,6 +316,7 @@ class NivelBaseFragment : Fragment() {
         numeroAleatorioUno = (Math.random() * 10).toInt()
         numeroAleatorioDos = (Math.random() * 10).toInt()
         resultado = numeroAleatorioUno + numeroAleatorioDos
+        signo = 1
         ivAuno.setImageResource(getDrawableId(numeroAleatorioUno))
         ivAdos.setImageResource(getDrawableId(numeroAleatorioDos))
         ivSigno.setImageResource(R.drawable.adicion)
@@ -256,6 +326,7 @@ class NivelBaseFragment : Fragment() {
         numeroAleatorioUno = (Math.random() * 10).toInt()
         numeroAleatorioDos = (Math.random() * 10).toInt()
         resultado = numeroAleatorioUno - numeroAleatorioDos
+        signo = 2
         if (resultado < 0) {
            nivel3()
         }
@@ -271,9 +342,11 @@ class NivelBaseFragment : Fragment() {
         numeroAleatorioDos = (Math.random() * 10).toInt()
         if (numeroAleatorioUno > 0 && numeroAleatorioDos <= 4) {
             resultado = numeroAleatorioUno + numeroAleatorioDos
+            signo = 1
             ivSigno.setImageResource(R.drawable.adicion)
         } else {
             resultado = (numeroAleatorioUno - numeroAleatorioDos)
+            signo = 2
             ivSigno.setImageResource(R.drawable.resta)
             if(resultado<0)
                 nivel4()
@@ -286,6 +359,7 @@ class NivelBaseFragment : Fragment() {
         numeroAleatorioUno = (Math.random() * 10).toInt()
         numeroAleatorioDos = (Math.random() * 10).toInt()
         resultado = numeroAleatorioUno * numeroAleatorioDos
+        signo = 3
         ivAuno.setImageResource(getDrawableId(numeroAleatorioUno))
         ivAdos.setImageResource(getDrawableId(numeroAleatorioDos))
         ivSigno.setImageResource(R.drawable.multiplicacion)
@@ -301,6 +375,7 @@ class NivelBaseFragment : Fragment() {
         }
         else{
             resultado = numeroAleatorioUno / numeroAleatorioDos
+            signo = 4
             ivAuno.setImageResource(getDrawableId(numeroAleatorioUno))
             ivAdos.setImageResource(getDrawableId(numeroAleatorioDos))
             ivSigno.setImageResource(R.drawable.division)
@@ -312,6 +387,7 @@ class NivelBaseFragment : Fragment() {
         numeroAleatorioDos = (Math.random() * 10).toInt()
         if (numeroAleatorioUno > 0 && numeroAleatorioDos <= 4) {
             resultado = numeroAleatorioUno * numeroAleatorioDos
+            signo = 3
             ivSigno.setImageResource(R.drawable.multiplicacion)
         } else if(numeroAleatorioDos == 0){
             nivel7()
@@ -321,6 +397,7 @@ class NivelBaseFragment : Fragment() {
         }
         else{
             resultado = numeroAleatorioUno / numeroAleatorioDos
+            signo = 4
             ivAuno.setImageResource(getDrawableId(numeroAleatorioUno))
             ivAdos.setImageResource(getDrawableId(numeroAleatorioDos))
             ivSigno.setImageResource(R.drawable.division)

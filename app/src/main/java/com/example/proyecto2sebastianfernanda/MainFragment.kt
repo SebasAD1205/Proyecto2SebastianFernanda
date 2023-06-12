@@ -2,6 +2,7 @@ package com.example.proyecto2sebastianfernanda
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.Configuration
 import android.media.MediaPlayer
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -18,22 +19,33 @@ import com.google.firebase.firestore.FirebaseFirestore
 
 
 
+@Suppress("DEPRECATION")
 class MainFragment : Fragment() {
     private lateinit var etNombre: EditText
     private lateinit var iVPersonaje: ImageView
     private lateinit var btnJugar: Button
     private lateinit var tVBestScore: TextView
-
     private lateinit var mp: MediaPlayer
     private var numAleatorio: Int = (Math.random() * 10).toInt()
+    private var recordStr = ""
+    private var posicionAudio = 0
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        retainInstance = true
+    }
 
-    @SuppressLint("SetTextI18n", "DiscouragedApi")
+    @SuppressLint("DiscouragedApi")
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        val rootView = inflater.inflate(R.layout.fragment_main, container, false)
+        val currentOrientation = resources.configuration.orientation
+        val rootView = if (currentOrientation == Configuration.ORIENTATION_LANDSCAPE) {
+            inflater.inflate(R.layout.fragment_main_land, container, false)
+        } else {
+            inflater.inflate(R.layout.fragment_main, container, false)
+        }
 
         etNombre = rootView.findViewById(R.id.etNombre)
         iVPersonaje = rootView.findViewById(R.id.iVPersonaje)
@@ -42,16 +54,23 @@ class MainFragment : Fragment() {
 
         btnJugar.setOnClickListener { jugar() }
 
-        val bd = FirebaseFirestore.getInstance()
-
-        bd.collection("Jugadores")
-            .document("3pIGRRf1se02EB8y6AvJ")
-            .get().addOnSuccessListener {
-                val tempNombre = it.get("nombre")
-                val tempScore = it.get("score")
-                tVBestScore.text = "Record: $tempScore de $tempNombre"
-            }
-
+        if(savedInstanceState != null) {
+            val value = savedInstanceState.getString("nombre")
+            etNombre.setText(value)
+            recordStr = savedInstanceState.getString("record")!!
+            tVBestScore.text = recordStr
+            posicionAudio = savedInstanceState.getInt("posicionAudio")
+        } else {
+            val bd = FirebaseFirestore.getInstance()
+            bd.collection("Jugadores")
+                .document("3pIGRRf1se02EB8y6AvJ")
+                .get().addOnSuccessListener { documentSnapshot ->
+                    val tempNombre = documentSnapshot.get("nombre")
+                    val tempScore = documentSnapshot.get("score")
+                    recordStr = "Record: $tempScore de $tempNombre"
+                    tVBestScore.text = recordStr
+                }
+        }
         val id = when (numAleatorio) {
             0, 10 -> resources.getIdentifier("mango", "drawable", requireContext().packageName)
             1, 9 -> resources.getIdentifier("fresa", "drawable", requireContext().packageName)
@@ -67,15 +86,25 @@ class MainFragment : Fragment() {
     override fun onStart() {
         super.onStart()
         mp = MediaPlayer.create(requireContext(), R.raw.alphabet_song)
+        mp.seekTo(posicionAudio)
         mp.isLooping = true
         mp.start()
     }
 
-    override fun onStop() {
-        super.onStop()
+    override fun onPause() {
+        super.onPause()
+        posicionAudio = mp.currentPosition
         mp.stop()
         mp.release()
     }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString("nombre", etNombre.text.toString())
+        outState.putString("record", recordStr)
+        outState.putInt("posicionAudio", posicionAudio)
+    }
+
     private fun jugar() {
         val nombre = etNombre.text.toString()
 
@@ -84,7 +113,6 @@ class MainFragment : Fragment() {
             val bundle = Bundle()
             bundle.putString("jugador", nombre)
             fragment.arguments = bundle
-
 
             parentFragmentManager.beginTransaction()
                 .replace(R.id.fragment_container, fragment)
@@ -98,5 +126,4 @@ class MainFragment : Fragment() {
             imm.showSoftInput(etNombre, InputMethodManager.SHOW_IMPLICIT)
         }
     }
-
 }
